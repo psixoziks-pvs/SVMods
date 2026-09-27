@@ -1,0 +1,12 @@
+{
+  "Name": "Infinite Water Hose",
+  "Author": "FarmModStudio",
+  "Version": "1.0.0",
+  "Description": "A hose sold by Pierre for 250g: one end stays in any water source, the other waters crops endlessly \u2014 no refills, unlimited reach.",
+  "UniqueID": "FarmModStudio.infinite_water_hose",
+  "EntryDll": "infinite_water_hose.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": [
+    "Nexus:000000"
+  ]
+}

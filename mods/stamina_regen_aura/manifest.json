@@ -1,0 +1,12 @@
+{
+  "Name": "Stamina Regen Aura",
+  "Author": "FarmModStudio",
+  "Version": "1.0.0",
+  "Description": "Wearable/placeable items that speed up stamina regeneration while the player is standing nearby.",
+  "UniqueID": "FarmModStudio.stamina_regen_aura",
+  "EntryDll": "stamina_regen_aura.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": [
+    "Nexus:000000"
+  ]
+}

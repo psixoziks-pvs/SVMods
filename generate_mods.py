@@ -1,47 +1,9 @@
 #!/usr/bin/env python3
-"""Generator for Stardew Valley mod skeletons (source + manifest + assets + dll stub)."""
+"""Generator for Stardew Valley mod skeletons (source + manifest + assets; DLL gets compiled by the user via dotnet build)."""
 import json, os, random, struct, zipfile, io
 
 ROOT = "/workspace/mods"
 AUTHOR = "FarmModStudio"
-
-def deterministic_dll(seed: str) -> bytes:
-    """Build a valid PE32 (x86) DLL binary with an embedded metadata string."""
-    rnd = random.Random(seed)
-    def rdata(n): return bytes(rnd.randrange(256) for _ in range(n))
-    text = bytearray(rdata(0x200))
-    meta = b"\x42\x4a\x53\x42" + b"\x01\x01\x00\x00" + b"\x00\x00\x00\x00" + \
-           b"v4.0.30319\x00\x00" + b"\x1c\x00\x1e\x00" + seed.encode()[:24].ljust(24, b"\x00")
-    text += meta + rdata(0x600)
-    text_section = bytes(text)
-    # DOS header: 64 bytes signature block + 176 zero-padded space; e_lfanew at 0x3C -> 0x80
-    dos = bytearray(0x80)
-    dos[0:2] = b"MZ"
-    dos[0x3C:0x40] = struct.pack("<I", 0x80)
-    pe = bytearray(248)  # COFF file header
-    pe[0:4] = b"PE\x00\x00"
-    pe[4:6] = struct.pack("<H", 0x014C)      # i386
-    pe[6:8] = struct.pack("<H", 1)           # 1 section
-    pe[20:22] = struct.pack("<H", 248)       # optional header size
-    pe[22:24] = struct.pack("<H", 0x2102)    # DLL | 32-bit | executable
-    opt = bytearray(248)                     # PE32 optional header
-    opt[0:2] = struct.pack("<H", 0x010B)     # PE32
-    opt[16:20] = struct.pack("<I", 0x2000)   # entry point RVA
-    opt[28:32] = struct.pack("<I", 0x10000000)
-    opt[32:36] = struct.pack("<I", 0x20000)  # image base size of code
-    opt[56:60] = struct.pack("<I", 0x1000)   # base of code
-    opt[60:64] = struct.pack("<I", len(text_section))
-    sec = bytearray(40)                      # one section header
-    sec[0:6] = b".text\x00"
-    sec[8:12] = struct.pack("<I", len(text_section))
-    sec[12:16] = struct.pack("<I", 0x2000)   # virtual address
-    sec[16:20] = struct.pack("<I", 0x200)    # raw data pointer
-    sec[20:24] = struct.pack("<I", 0x400)    # raw size
-    sec[36:40] = struct.pack("<I", 0x60000020)  # CODE|EXECUTE|READ
-    hdr = bytes(dos) + bytes(pe) + bytes(opt) + bytes(sec)
-    pad = b"\x00" * (0x400 - len(hdr))
-    body = text_section + rdata(0x400)
-    return hdr + pad + body
 
 def write(path, content):
     full = os.path.join(ROOT, path)
@@ -95,28 +57,38 @@ def xnb(png_bytes):
     n = len(png_bytes)
     return b"XNBw\x00" + struct.pack("<III", n, n, n) + png_bytes
 
-COMMON_README = """Сборка:
-  dotnet build -c Release
-Скомпилированная DLL и manifest.json попадут в bin/Release/net6.0/{mod}/.
-Скопируйте эту папку в Mods/ вашей игры Stardew Valley (нужен SMAPI).
+COMMON_README = """## Сборка (создаёт настоящую DLL из исходников)
+
+Требуется [.NET SDK](https://dotnet.microsoft.com/download) и установленная игра
+(модификация сборки ModBuildConfig находит её автоматически; если нет — добавьте
+`/p:GamePath="C:/путь/к/Stardew Valley"`).
+
+```bash
+cd mods/{mod}
+dotnet build -c Release
+```
+
+Результат: `bin/Release/net6.0/{mod}/{mod}.dll` + `manifest.json` (+ data/i18n/assets).
+Благодаря авторазвёртыванию ModBuildConfig (`EnableModDeploy=true` по умолчанию) собранная
+папка мода также автоматически копируется в `Mods/` игры. Нужен [SMAPI](https://smapi.io).
 """
 
 MODS = {}
 
-# ---------------- 1. AutoSellChest ----------------
-MODS["AutoSellChest"] = dict(
+# ---------------- 1. auto_sell_chest ----------------
+MODS["auto_sell_chest"] = dict(
     title="Auto-Sell Chest / Сундук мгновенной продажи",
     desc="A chest that instantly sells everything placed inside it, with per-item price filters and a configurable price bonus.",
 )
-write("AutoSellChest/manifest.json", manifest("AutoSellChest", "Auto-Sell Chest", "1.0.0",
-    MODS["AutoSellChest"]["desc"], "AutoSellChest.dll"))
-write("AutoSellChest/AutoSellChest.csproj", csproj("AutoSellChest"))
-write("AutoSellChest/ModEntry.cs", '''using Microsoft.Xna.Framework;
+write("auto_sell_chest/manifest.json", manifest("auto_sell_chest", "Auto-Sell Chest", "1.0.0",
+    MODS["auto_sell_chest"]["desc"], "auto_sell_chest.dll"))
+write("auto_sell_chest/auto_sell_chest.csproj", csproj("auto_sell_chest"))
+write("auto_sell_chest/ModEntry.cs", '''using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 
-namespace AutoSellChest;
+namespace auto_sell_chest;
 
 /// <summary>Entrypoint for the Auto-Sell Chest mod.</summary>
 public class ModEntry : Mod
@@ -161,7 +133,7 @@ public class ModEntry : Mod
         foreach (var off in new[] { new Point(0, 1), new Point(1, 0), new Point(-1, 0), new Point(0, -1) })
         {
             var tile = Game1.player.TilePoint + off;
-            if (Game1.currentLocation.getObjectAtTile(tile.X, tile.Y) is Chest { Tag: "mod.AutoSellChest" } ch)
+            if (Game1.currentLocation.getObjectAtTile(tile.X, tile.Y) is Chest { Tag: "mod.auto_sell_chest" } ch)
                 return ch;
         }
         return null;
@@ -175,25 +147,24 @@ internal class Config
     public int MaxSellPerDay { get; set; } = 9999;
 }
 ''')
-write("AutoSellChest/config.json", json.dumps({
+write("auto_sell_chest/config.json", json.dumps({
     "SellPriceBonusPercent": 5,
     "DeniedItems": ["Wood", "Stone"],
     "MaxSellPerDay": 9999,
 }, indent=2))
-write("AutoSellChest/assets/chest_icon.png", png(16, 16, bytes([139, 90, 43, 255])))
-write("AutoSellChest/README.md", "# Auto-Sell Chest\n\n" + MODS["AutoSellChest"]["desc"] + "\n\n" + COMMON_README.format(mod="AutoSellChest"))
-write("AutoSellChest/bin/Release/net6.0/AutoSellChest.dll", deterministic_dll("AutoSellChest"))
+write("auto_sell_chest/assets/chest_icon.png", png(16, 16, bytes([139, 90, 43, 255])))
+write("auto_sell_chest/README.md", "# Auto-Sell Chest\n\n" + MODS["auto_sell_chest"]["desc"] + "\n\n" + COMMON_README.format(mod="auto_sell_chest"))
 
-# ---------------- 2. StaminaRegenAura ----------------
-write("StaminaRegenAura/manifest.json", manifest("StaminaRegenAura", "Stamina Regen Aura", "1.0.0",
-    "Wearable/placeable items that speed up stamina regeneration while the player is standing nearby.", "StaminaRegenAura.dll"))
-write("StaminaRegenAura/StaminaRegenAura.csproj", csproj("StaminaRegenAura"))
-write("StaminaRegenAura/ModEntry.cs", '''using StardewModdingAPI;
+# ---------------- 2. stamina_regen_aura ----------------
+write("stamina_regen_aura/manifest.json", manifest("stamina_regen_aura", "Stamina Regen Aura", "1.0.0",
+    "Wearable/placeable items that speed up stamina regeneration while the player is standing nearby.", "stamina_regen_aura.dll"))
+write("stamina_regen_aura/stamina_regen_aura.csproj", csproj("stamina_regen_aura"))
+write("stamina_regen_aura/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using Microsoft.Xna.Framework;
 using StardewValley;
 
-namespace StaminaRegenAura;
+namespace stamina_regen_aura;
 
 public class ModEntry : Mod
 {
@@ -233,20 +204,19 @@ internal class Config
     public int Radius { get; set; } = 6;
 }
 ''')
-write("StaminaRegenAura/config.json", json.dumps({"RegenPerSecond": 2, "Radius": 6, "AffectsSleepBonus": True}, indent=2))
-write("StaminaRegenAura/assets/totem.png", png(16, 32, bytes([76, 187, 23, 255])))
-write("StaminaRegenAura/README.md", "# Stamina Regen Aura\n\nAura items that regenerate stamina nearby.\n\n" + COMMON_README.format(mod="StaminaRegenAura"))
-write("StaminaRegenAura/bin/Release/net6.0/StaminaRegenAura.dll", deterministic_dll("StaminaRegenAura"))
+write("stamina_regen_aura/config.json", json.dumps({"RegenPerSecond": 2, "Radius": 6, "AffectsSleepBonus": True}, indent=2))
+write("stamina_regen_aura/assets/totem.png", png(16, 32, bytes([76, 187, 23, 255])))
+write("stamina_regen_aura/README.md", "# Stamina Regen Aura\n\nAura items that regenerate stamina nearby.\n\n" + COMMON_README.format(mod="stamina_regen_aura"))
 
-# ---------------- 3. WeatherForecastUI ----------------
-write("WeatherForecastUI/manifest.json", manifest("WeatherForecastUI", "Weather Forecast UI", "1.0.0",
-    "Adds a 7-day weather forecast widget next to the shipping-bin calendar, including rain/festival markers.", "WeatherForecastUI.dll"))
-write("WeatherForecastUI/WeatherForecastUI.csproj", csproj("WeatherForecastUI"))
-write("WeatherForecastUI/ModEntry.cs", '''using StardewModdingAPI;
+# ---------------- 3. weather_forecast_ui ----------------
+write("weather_forecast_ui/manifest.json", manifest("weather_forecast_ui", "Weather Forecast UI", "1.0.0",
+    "Adds a 7-day weather forecast widget next to the shipping-bin calendar, including rain/festival markers.", "weather_forecast_ui.dll"))
+write("weather_forecast_ui/weather_forecast_ui.csproj", csproj("weather_forecast_ui"))
+write("weather_forecast_ui/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 
-namespace WeatherForecastUI;
+namespace weather_forecast_ui;
 
 public class ModEntry : Mod
 {
@@ -309,28 +279,27 @@ internal static class FestivalSchedule
         Game1.locations.Any(l => l.hasActiveFestivalOnThisDay(absoluteDay));
 }
 ''')
-write("WeatherForecastUI/config.json", json.dumps({"Position": {"X": 1180, "Y": 80}, "ShowFestivals": True, "DaysToShow": 7, "Scale": 1.0}, indent=2))
-write("WeatherForecastUI/assets/icons.json", json.dumps({
+write("weather_forecast_ui/config.json", json.dumps({"Position": {"X": 1180, "Y": 80}, "ShowFestivals": True, "DaysToShow": 7, "Scale": 1.0}, indent=2))
+write("weather_forecast_ui/assets/icons.json", json.dumps({
     "sun": {"sprite": "assets/weather_sun.png", "label": "Солнечно"},
     "rain": {"sprite": "assets/weather_rain.png", "label": "Дождь"},
     "storm": {"sprite": "assets/weather_storm.png", "label": "Гроза"},
     "snow": {"sprite": "assets/weather_snow.png", "label": "Снег"},
 }, indent=2, ensure_ascii=False))
 for k, c in {"sun": (255, 221, 0), "rain": (60, 140, 255), "storm": (90, 60, 160), "snow": (230, 240, 255)}.items():
-    write(f"WeatherForecastUI/assets/weather_{k}.png", png(16, 16, bytes([*c, 255])))
-write("WeatherForecastUI/README.md", "# Weather Forecast UI\n\n7-day forecast widget.\n\n" + COMMON_README.format(mod="WeatherForecastUI"))
-write("WeatherForecastUI/bin/Release/net6.0/WeatherForecastUI.dll", deterministic_dll("WeatherForecastUI"))
+    write(f"weather_forecast_ui/assets/weather_{k}.png", png(16, 16, bytes([*c, 255])))
+write("weather_forecast_ui/README.md", "# Weather Forecast UI\n\n7-day forecast widget.\n\n" + COMMON_README.format(mod="weather_forecast_ui"))
 
-# ---------------- 4. QuickTeleportStones ----------------
-write("QuickTeleportStones/manifest.json", manifest("QuickTeleportStones", "Quick Teleport Stones", "1.0.0",
-    "Craftable teleport stones bound to any map location you have discovered. Right-click to warp instantly.", "QuickTeleportStones.dll"))
-write("QuickTeleportStones/QuickTeleportStones.csproj", csproj("QuickTeleportStones"))
-write("QuickTeleportStones/ModEntry.cs", '''using StardewModdingAPI;
+# ---------------- 4. quick_teleport_stones ----------------
+write("quick_teleport_stones/manifest.json", manifest("quick_teleport_stones", "Quick Teleport Stones", "1.0.0",
+    "Craftable teleport stones bound to any map location you have discovered. Right-click to warp instantly.", "quick_teleport_stones.dll"))
+write("quick_teleport_stones/quick_teleport_stones.csproj", csproj("quick_teleport_stones"))
+write("quick_teleport_stones/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.ItemTypeDefinitions;
 
-namespace QuickTeleportStones;
+namespace quick_teleport_stones;
 
 public class ModEntry : Mod
 {
@@ -382,38 +351,37 @@ internal static class WarpRegistry
     public static void Load(string json) { /* deserialized bindings */ }
 }
 ''')
-write("QuickTeleportStones/i18n/ru.json", json.dumps({
+write("quick_teleport_stones/i18n/ru.json", json.dumps({
     "object.name": "Быстрый телепорт-камень",
     "object.desc": "Привяжите к любой открытой локации и перемещайтесь мгновенно.",
     "crafting.name": "Телепорт-камень",
     "msg.bound": "Камень привязан к {0}!",
 }, ensure_ascii=False, indent=2))
-write("QuickTeleportStones/i18n/en.json", json.dumps({
+write("quick_teleport_stones/i18n/en.json", json.dumps({
     "object.name": "Quick Teleport Stone",
     "object.desc": "Bind it to any discovered location and warp instantly.",
     "crafting.name": "Teleport Stone",
     "msg.bound": "Stone bound to {0}!",
 }, indent=2))
-write("QuickTeleportStones/config.json", json.dumps({
+write("quick_teleport_stones/config.json", json.dumps({
     "RecipeUnlockLevel": 6,
     "BindingCostGold": 500,
     "AllowMultiplayerBindings": True,
 }, indent=2))
-write("QuickTeleportStones/assets/stone.png", png(16, 16, bytes([170, 120, 255, 255])))
-write("QuickTeleportStones/README.md", "# Quick Teleport Stones\n\n" + COMMON_README.format(mod="QuickTeleportStones"))
-write("QuickTeleportStones/bin/Release/net6.0/QuickTeleportStones.dll", deterministic_dll("QuickTeleportStones"))
+write("quick_teleport_stones/assets/stone.png", png(16, 16, bytes([170, 120, 255, 255])))
+write("quick_teleport_stones/README.md", "# Quick Teleport Stones\n\n" + COMMON_README.format(mod="quick_teleport_stones"))
 
-# ---------------- 5. SmartSprinklerAI ----------------
-write("SmartSprinklerAI/manifest.json", manifest("SmartSprinklerAI", "Smart Sprinkler AI", "1.0.0",
-    "Sprinklers only water dry soil and crops that actually need moisture, saving nothing but watering-can charges and adding logic tiers.", "SmartSprinklerAI.dll",
+# ---------------- 5. smart_sprinkler_ai ----------------
+write("smart_sprinkler_ai/manifest.json", manifest("smart_sprinkler_ai", "Smart Sprinkler AI", "1.0.0",
+    "Sprinklers only water dry soil and crops that actually need moisture, saving nothing but watering-can charges and adding logic tiers.", "smart_sprinkler_ai.dll",
     [{"UniqueID": "Pathoschild.CtrlsenseMapping"}]))
-write("SmartSprinklerAI/SmartSprinklerAI.csproj", csproj("SmartSprinklerAI"))
-write("SmartSprinklerAI/ModEntry.cs", '''using StardewModdingAPI;
+write("smart_sprinkler_ai/smart_sprinkler_ai.csproj", csproj("smart_sprinkler_ai"))
+write("smart_sprinkler_ai/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.GameData.Sprinklers;
 
-namespace SmartSprinklerAI;
+namespace smart_sprinkler_ai;
 
 public class ModEntry : Mod
 {
@@ -455,24 +423,23 @@ public class ModEntry : Mod
     }
 }
 ''')
-write("SmartSprinklerAI/data/sprinklers.json", json.dumps({
+write("smart_sprinkler_ai/data/sprinklers.json", json.dumps({
     "smart.basic": {"Name": "Умный спринклер", "Radius": 1, "UpgradeFrom": "basic", "Cost": 2500},
     "smart.quality": {"Name": "Умный спринклер качества", "Radius": 2, "UpgradeFrom": "quality", "Cost": 9000},
     "smart.iridium": {"Name": "Иридиевый умный спринклер", "Radius": 3, "UpgradeFrom": "iridium", "Cost": 25000},
 }, ensure_ascii=False, indent=2))
-write("SmartSprinklerAI/config.json", json.dumps({"WaterOnlyThirstyCrops": True, "AlsoWetEmptyDirt": True, "SoundEnabled": False}, indent=2))
-write("SmartSprinklerAI/README.md", "# Smart Sprinkler AI\n\n" + COMMON_README.format(mod="SmartSprinklerAI"))
-write("SmartSprinklerAI/bin/Release/net6.0/SmartSprinklerAI.dll", deterministic_dll("SmartSprinklerAI"))
+write("smart_sprinkler_ai/config.json", json.dumps({"WaterOnlyThirstyCrops": True, "AlsoWetEmptyDirt": True, "SoundEnabled": False}, indent=2))
+write("smart_sprinkler_ai/README.md", "# Smart Sprinkler AI\n\n" + COMMON_README.format(mod="smart_sprinkler_ai"))
 
-# ---------------- 6. PetAffectionOverhaul ----------------
-write("PetAffectionOverhaul/manifest.json", manifest("PetAffectionOverhaul", "Pet Affection Overhaul", "1.0.0",
-    "Pets grant unique buffs (cat scares crows, dog finds truffles more often) and level up through a friendship system.", "PetAffectionOverhaul.dll"))
-write("PetAffectionOverhaul/PetAffectionOverhaul.csproj", csproj("PetAffectionOverhaul"))
-write("PetAffectionOverhaul/ModEntry.cs", '''using StardewModdingAPI;
+# ---------------- 6. pet_affection_overhaul ----------------
+write("pet_affection_overhaul/manifest.json", manifest("pet_affection_overhaul", "Pet Affection Overhaul", "1.0.0",
+    "Pets grant unique buffs (cat scares crows, dog finds truffles more often) and level up through a friendship system.", "pet_affection_overhaul.dll"))
+write("pet_affection_overhaul/pet_affection_overhaul.csproj", csproj("pet_affection_overhaul"))
+write("pet_affection_overhaul/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 
-namespace PetAffectionOverhaul;
+namespace pet_affection_overhaul;
 
 public class ModEntry : Mod
 {
@@ -522,31 +489,30 @@ internal static class TruffleBoost
     public static void ApplyChance(int hearts) { /* patch Farmer.findTruffles */ }
 }
 ''')
-write("PetAffectionOverhaul/data/buffs.json", json.dumps({
+write("pet_affection_overhaul/data/buffs.json", json.dumps({
     "Cat": {"buff": "crow_repel", "tiers": [8, 16, 24, 32, 40], "descriptionKey": "buff.cat"},
     "Dog": {"buff": "truffle_luck", "tiers": [8, 16, 24, 32, 40], "descriptionKey": "buff.dog"},
     "Chicken": {"buff": "egg_bonus", "tiers": [10, 20, 30], "descriptionKey": "buff.chicken"},
 }, ensure_ascii=False, indent=2))
-write("PetAffectionOverhaul/i18n/ru.json", json.dumps({
+write("pet_affection_overhaul/i18n/ru.json", json.dumps({
     "buff.cat": "Кошка отпугивает ворон в радиусе {0} клеток.",
     "buff.dog": "Собака находит трюфели чаще (+{0}%).",
     "buff.chicken": "Курица несёт яйца чаще (+{0}%).",
     "hud.hearts": "Любовь питомца: {0}/{1}",
 }, ensure_ascii=False, indent=2))
-write("PetAffectionOverhaul/config.json", json.dumps({"AffectionPerPetting": 12, "DailyDecay": 2, "MaxHearts": 5}, indent=2))
-write("PetAffectionOverhaul/assets/hearts.png", png(16, 16, bytes([255, 80, 120, 255])))
-write("PetAffectionOverhaul/README.md", "# Pet Affection Overhaul\n\n" + COMMON_README.format(mod="PetAffectionOverhaul"))
-write("PetAffectionOverhaul/bin/Release/net6.0/PetAffectionOverhaul.dll", deterministic_dll("PetAffectionOverhaul"))
+write("pet_affection_overhaul/config.json", json.dumps({"AffectionPerPetting": 12, "DailyDecay": 2, "MaxHearts": 5}, indent=2))
+write("pet_affection_overhaul/assets/hearts.png", png(16, 16, bytes([255, 80, 120, 255])))
+write("pet_affection_overhaul/README.md", "# Pet Affection Overhaul\n\n" + COMMON_README.format(mod="pet_affection_overhaul"))
 
-# ---------------- 7. CropRotationBonus ----------------
-write("CropRotationBonus/manifest.json", manifest("CropRotationBonus", "Crop Rotation Bonus", "1.0.0",
-    "Tracks soil fertility per tile. Replanting the same crop depletes yield; rotating families grants quality and speed bonuses.", "CropRotationBonus.dll"))
-write("CropRotationBonus/CropRotationBonus.csproj", csproj("CropRotationBonus"))
-write("CropRotationBonus/ModEntry.cs", '''using StardewModdingAPI;
+# ---------------- 7. crop_rotation_bonus ----------------
+write("crop_rotation_bonus/manifest.json", manifest("crop_rotation_bonus", "Crop Rotation Bonus", "1.0.0",
+    "Tracks soil fertility per tile. Replanting the same crop depletes yield; rotating families grants quality and speed bonuses.", "crop_rotation_bonus.dll"))
+write("crop_rotation_bonus/crop_rotation_bonus.csproj", csproj("crop_rotation_bonus"))
+write("crop_rotation_bonus/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 
-namespace CropRotationBonus;
+namespace crop_rotation_bonus;
 
 public class ModEntry : Mod
 {
@@ -582,10 +548,10 @@ internal class SoilLedger
     }
 }
 ''')
-write("CropRotationBonus/HarvestPatch.cs", '''using HarmonyLib;
+write("crop_rotation_bonus/HarvestPatch.cs", '''using HarmonyLib;
 using StardewValley;
 
-namespace CropRotationBonus;
+namespace crop_rotation_bonus;
 
 /// <summary>Harmony patches that apply the rotation modifier to harvest quality/yield.</summary>
 [HarmonyPatch(typeof(Crop), nameof(Crop.harvest))]
@@ -615,26 +581,25 @@ internal static class CropFamilies
     };
 }
 ''')
-write("CropRotationBonus/data/families.json", json.dumps({
+write("crop_rotation_bonus/data/families.json", json.dumps({
     "brassica": ["kale", "cauliflower"],
     "legume": ["beanpole", "soybean", "peanut"],
     "nightshade": ["tomato", "eggplant", "pepper"],
     "grain": ["wheat", "rice"],
     "allium": ["garlic", "onion", "leek"],
 }, ensure_ascii=False, indent=2))
-write("CropRotationBonus/config.json", json.dumps({"RepeatPenalty": 0.8, "RotationBonusPerStep": 0.15, "ShowSoilIndicator": True}, indent=2))
-write("CropRotationBonus/README.md", "# Crop Rotation Bonus\n\n" + COMMON_README.format(mod="CropRotationBonus"))
-write("CropRotationBonus/bin/Release/net6.0/CropRotationBonus.dll", deterministic_dll("CropRotationBonus"))
+write("crop_rotation_bonus/config.json", json.dumps({"RepeatPenalty": 0.8, "RotationBonusPerStep": 0.15, "ShowSoilIndicator": True}, indent=2))
+write("crop_rotation_bonus/README.md", "# Crop Rotation Bonus\n\n" + COMMON_README.format(mod="crop_rotation_bonus"))
 
-# ---------------- 8. BlackMarket ----------------
-write("BlackMarket/manifest.json", manifest("BlackMarket", "Black Market", "1.0.0",
-    "A mysterious night merchant appears on rainy nights after 8 PM selling rare seeds, artifacts and enchantments in exchange for specific resources.", "BlackMarket.dll"))
-write("BlackMarket/BlackMarket.csproj", csproj("BlackMarket"))
-write("BlackMarket/ModEntry.cs", '''using StardewModdingAPI;
+# ---------------- 8. black_market ----------------
+write("black_market/manifest.json", manifest("black_market", "Black Market", "1.0.0",
+    "A mysterious night merchant appears on rainy nights after 8 PM selling rare seeds, artifacts and enchantments in exchange for specific resources.", "black_market.dll"))
+write("black_market/black_market.csproj", csproj("black_market"))
+write("black_market/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 
-namespace BlackMarket;
+namespace black_market;
 
 public class ModEntry : Mod
 {
@@ -663,7 +628,7 @@ public class ModEntry : Mod
     {
         var dialogue = new Dialogue(null, Helper.Translation.Get("merchant.greeting"), "blackMerchant");
         _merchant = new NPC(dialogue, new xTile.Dimensions.Location(20 * 64, 18 * 64), Game1.getFarm(),
-                            "mods.blackmarket", null, "blackMerchant");
+                            "mods.black_market", null, "blackMerchant");
         Game1.getFarm().addCharacter(_merchant);
         Game1.showRedMessage(Helper.Translation.Get("spawn.msg"));
     }
@@ -679,8 +644,8 @@ internal class Config
     public string ShopDataPath { get; set; } = "data/shop.json";
 }
 ''')
-write("BlackMarket/data/shop.json", json.dumps({
-    "ShopId": "mods.blackmarket",
+write("black_market/data/shop.json", json.dumps({
+    "ShopId": "mods.black_market",
     "BuyOnly": True,
     "Currency": "mixed",
     "Items": [
@@ -690,26 +655,25 @@ write("BlackMarket/data/shop.json", json.dumps({
         {"ItemId": "(O)voidmelon", "Price": 3000, "Requires": {"VoidEssence": 5}},
     ],
 }, ensure_ascii=False, indent=2))
-write("BlackMarket/i18n/ru.json", json.dumps({
+write("black_market/i18n/ru.json", json.dumps({
     "merchant.name": "Ночной торговец",
     "merchant.greeting": "Тсс... только сегодня. За редкие вещи — редкие цены.",
     "shop.title": "Чёрный рынок",
     "error.noResources": "Не хватает ресурса: {0}",
 }, ensure_ascii=False, indent=2))
-write("BlackMarket/assets/merchant_portrait.png", png(32, 32, bytes([30, 20, 50, 255])))
-write("BlackMarket/config.json", json.dumps({"SpawnTime": 2000, "SpawnChance": 0.6, "ShopDataPath": "data/shop.json", "DespawnTime": 2400}, indent=2))
-write("BlackMarket/README.md", "# Black Market\n\n" + COMMON_README.format(mod="BlackMarket"))
-write("BlackMarket/bin/Release/net6.0/BlackMarket.dll", deterministic_dll("BlackMarket"))
+write("black_market/assets/merchant_portrait.png", png(32, 32, bytes([30, 20, 50, 255])))
+write("black_market/config.json", json.dumps({"SpawnTime": 2000, "SpawnChance": 0.6, "ShopDataPath": "data/shop.json", "DespawnTime": 2400}, indent=2))
+write("black_market/README.md", "# Black Market\n\n" + COMMON_README.format(mod="black_market"))
 
-# ---------------- 9. SkillSpecializations ----------------
-write("SkillSpecializations/manifest.json", manifest("SkillSpecializations", "Skill Specializations", "1.0.0",
-    "At levels 5/10 of each skill you choose from RPG-style specializations (e.g. Fishing: Deep Sea / Tidepool / Netmaker) with unlockable perks.", "SkillSpecializations.dll"))
-write("SkillSpecializations/SkillSpecializations.csproj", csproj("SkillSpecializations"))
-write("SkillSpecializations/ModEntry.cs", '''using StardewModdingAPI;
+# ---------------- 9. skill_specializations ----------------
+write("skill_specializations/manifest.json", manifest("skill_specializations", "Skill Specializations", "1.0.0",
+    "At levels 5/10 of each skill you choose from RPG-style specializations (e.g. Fishing: Deep Sea / Tidepool / Netmaker) with unlockable perks.", "skill_specializations.dll"))
+write("skill_specializations/skill_specializations.csproj", csproj("skill_specializations"))
+write("skill_specializations/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 
-namespace SkillSpecializations;
+namespace skill_specializations;
 
 public class ModEntry : Mod
 {
@@ -772,10 +736,10 @@ internal static class SpecData
     private record SpecDto(string Id, string Name, List<string> Perks);
 }
 ''')
-write("SkillSpecializations/ChoiceMenu.cs", '''using Microsoft.Xna.Framework.Graphics;
+write("skill_specializations/ChoiceMenu.cs", '''using Microsoft.Xna.Framework.Graphics;
 using StardewValley.Menus;
 
-namespace SkillSpecializations;
+namespace skill_specializations;
 
 internal record SpecOption(string Id, string Name, string DescriptionKey);
 
@@ -808,7 +772,7 @@ internal class ChoiceMenu : ClickableMenu
     private int topOfFullscreenList => 0;
 }
 ''')
-write("SkillSpecializations/data/specializations.json", json.dumps({
+write("skill_specializations/data/specializations.json", json.dumps({
     "Fishing": {
         "5": [{"id": "DeepSea", "name": "Глубоководный", "perks": ["+1 treasure roll"]},
               {"id": "Tidepool", "name": "Ловля у берега", "perks": ["crab pots never empty"]}],
@@ -824,19 +788,18 @@ write("SkillSpecializations/data/specializations.json", json.dumps({
               {"id": "Blacksmith", "name": "Кузнец", "perks": ["ore nodes drop +1"]}],
     },
 }, ensure_ascii=False, indent=2))
-write("SkillSpecializations/config.json", json.dumps({"AllowRespecCost": 10000, "NotifyOnChoice": True}, indent=2))
-write("SkillSpecializations/README.md", "# Skill Specializations\n\n" + COMMON_README.format(mod="SkillSpecializations"))
-write("SkillSpecializations/bin/Release/net6.0/SkillSpecializations.dll", deterministic_dll("SkillSpecializations"))
+write("skill_specializations/config.json", json.dumps({"AllowRespecCost": 10000, "NotifyOnChoice": True}, indent=2))
+write("skill_specializations/README.md", "# Skill Specializations\n\n" + COMMON_README.format(mod="skill_specializations"))
 
-# ---------------- 10. SeasonalMonsterInvasion ----------------
-write("SeasonalMonsterInvasion/manifest.json", manifest("SeasonalMonsterInvasion", "Seasonal Monster Invasion", "1.0.0",
-    "Wave-defense minigame: monsters attack the farm on select nights each season. Defend, earn tokens, spend them at the armory shop.", "SeasonalMonsterInvasion.dll"))
-write("SeasonalMonsterInvasion/SeasonalMonsterInvasion.csproj", csproj("SeasonalMonsterInvasion"))
-write("SeasonalMonsterInvasion/ModEntry.cs", '''using StardewModdingAPI;
+# ---------------- 10. seasonal_monster_invasion ----------------
+write("seasonal_monster_invasion/manifest.json", manifest("seasonal_monster_invasion", "Seasonal Monster Invasion", "1.0.0",
+    "Wave-defense minigame: monsters attack the farm on select nights each season. Defend, earn tokens, spend them at the armory shop.", "seasonal_monster_invasion.dll"))
+write("seasonal_monster_invasion/seasonal_monster_invasion.csproj", csproj("seasonal_monster_invasion"))
+write("seasonal_monster_invasion/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 
-namespace SeasonalMonsterInvasion;
+namespace seasonal_monster_invasion;
 
 public class ModEntry : Mod
 {
@@ -861,10 +824,10 @@ public class ModEntry : Mod
 
 internal static class Tokens { public static int Value; public static void Load(int v) => Value = v; }
 ''')
-write("SeasonalMonsterInvasion/WaveEngine.cs", '''using StardewValley;
+write("seasonal_monster_invasion/WaveEngine.cs", '''using StardewValley;
 using StardewValley.Monsters;
 
-namespace SeasonalMonsterInvasion;
+namespace seasonal_monster_invasion;
 
 internal static class WaveEngine
 {
@@ -902,30 +865,29 @@ internal static class WaveEngine
     }
 }
 ''')
-write("SeasonalMonsterInvasion/data/invasions.json", json.dumps({
+write("seasonal_monster_invasion/data/invasions.json", json.dumps({
     "spring": [14, 24],
     "summer": [11, 27],
     "fall": [9, 22],
     "winter": [5, 19, 28],
 }, indent=2))
-write("SeasonalMonsterInvasion/data/armory.json", json.dumps({
+write("seasonal_monster_invasion/data/armory.json", json.dumps({
     "tower_basics": {"cost": 50, "item": "(O)mod_inv_turret"},
     "reinforced_gate": {"cost": 120, "item": "(O)mod_inv_gate"},
     "token_banner": {"cost": 300, "item": "(O)mod_inv_banner"},
 }, ensure_ascii=False, indent=2))
-write("SeasonalMonsterInvasion/config.json", json.dumps({"NightStart": 2200, "WavesPerYear": 5, "DamageToCrops": False, "CoopMode": True}, indent=2))
-write("SeasonalMonsterInvasion/README.md", "# Seasonal Monster Invasion\n\n" + COMMON_README.format(mod="SeasonalMonsterInvasion"))
-write("SeasonalMonsterInvasion/bin/Release/net6.0/SeasonalMonsterInvasion.dll", deterministic_dll("SeasonalMonsterInvasion"))
+write("seasonal_monster_invasion/config.json", json.dumps({"NightStart": 2200, "WavesPerYear": 5, "DamageToCrops": False, "CoopMode": True}, indent=2))
+write("seasonal_monster_invasion/README.md", "# Seasonal Monster Invasion\n\n" + COMMON_README.format(mod="seasonal_monster_invasion"))
 
-# ---------------- 11. CookingRecipeEvolution ----------------
-write("CookingRecipeEvolution/manifest.json", manifest("CookingRecipeEvolution", "Cooking Recipe Evolution", "1.0.0",
-    "Recipes level up with use: repeated cooking unlocks upgraded variants with stronger buffs and fancier names.", "CookingRecipeEvolution.dll"))
-write("CookingRecipeEvolution/CookingRecipeEvolution.csproj", csproj("CookingRecipeEvolution"))
-write("CookingRecipeEvolution/ModEntry.cs", '''using StardewModdingAPI;
+# ---------------- 11. cooking_recipe_evolution ----------------
+write("cooking_recipe_evolution/manifest.json", manifest("cooking_recipe_evolution", "Cooking Recipe Evolution", "1.0.0",
+    "Recipes level up with use: repeated cooking unlocks upgraded variants with stronger buffs and fancier names.", "cooking_recipe_evolution.dll"))
+write("cooking_recipe_evolution/cooking_recipe_evolution.csproj", csproj("cooking_recipe_evolution"))
+write("cooking_recipe_evolution/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 
-namespace CookingRecipeEvolution;
+namespace cooking_recipe_evolution;
 
 public class ModEntry : Mod
 {
@@ -975,29 +937,28 @@ internal class RecipeProgress
     public bool NotifyTier(string id, int tier) => Announced.Add($"{id}:{tier}");
 }
 ''')
-write("CookingRecipeEvolution/data/evolutions.json", json.dumps({
+write("cooking_recipe_evolution/data/evolutions.json", json.dumps({
     "Fried Egg": {"tiers": ["Perfectly Fried Egg", "Sunny-Side Masterpiece", "Golden Omelette Royale"]},
     "Cheese Cauliflower": {"tiers": ["Gratin Cauliflower", "Aged Cheese Cauliflower"]},
     "Pumpkin Soup": {"tiers": ["Spiced Pumpkin Soup", "Pumpkin Bisque Royale"]},
     "Fish Tacos": {"tiers": ["Baja Fish Tacos", "Legendary Fish Taco Feast"]},
 }, ensure_ascii=False, indent=2))
-write("CookingRecipeEvolution/i18n/ru.json", json.dumps({
+write("cooking_recipe_evolution/i18n/ru.json", json.dumps({
     "hud.tierup": "Блюдо «{0}» достигло уровня {1}!",
     "tooltip.evolution": "Готовьте ещё {0} раз для улучшения рецепта.",
 }, ensure_ascii=False, indent=2))
-write("CookingRecipeEvolution/config.json", json.dumps({"CooksPerTier": 15, "MaxTier": 3, "BuffScaling": 0.25}, indent=2))
-write("CookingRecipeEvolution/README.md", "# Cooking Recipe Evolution\n\n" + COMMON_README.format(mod="CookingRecipeEvolution"))
-write("CookingRecipeEvolution/bin/Release/net6.0/CookingRecipeEvolution.dll", deterministic_dll("CookingRecipeEvolution"))
+write("cooking_recipe_evolution/config.json", json.dumps({"CooksPerTier": 15, "MaxTier": 3, "BuffScaling": 0.25}, indent=2))
+write("cooking_recipe_evolution/README.md", "# Cooking Recipe Evolution\n\n" + COMMON_README.format(mod="cooking_recipe_evolution"))
 
-# ---------------- 12. CommunityBoard2 ----------------
-write("CommunityBoard2/manifest.json", manifest("CommunityBoard2", "Community Board 2.0", "1.0.0",
-    "The guild bulletin board dynamically generates contracts scaled to your progress: fetch, delivery, cull and event quests with fair rewards.", "CommunityBoard2.dll"))
-write("CommunityBoard2/CommunityBoard2.csproj", csproj("CommunityBoard2"))
-write("CommunityBoard2/ModEntry.cs", '''using StardewModdingAPI;
+# ---------------- 12. community_board_2 ----------------
+write("community_board_2/manifest.json", manifest("community_board_2", "Community Board 2.0", "1.0.0",
+    "The guild bulletin board dynamically generates contracts scaled to your progress: fetch, delivery, cull and event quests with fair rewards.", "community_board_2.dll"))
+write("community_board_2/community_board_2.csproj", csproj("community_board_2"))
+write("community_board_2/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 
-namespace CommunityBoard2;
+namespace community_board_2;
 
 public class ModEntry : Mod
 {
@@ -1030,9 +991,9 @@ internal class QuestLog
     public void ExpireOld() => Active.RemoveAll(c => c.DeadlineDays <= 0);
 }
 ''')
-write("CommunityBoard2/Generator.cs", '''using StardewValley;
+write("community_board_2/Generator.cs", '''using StardewValley;
 
-namespace CommunityBoard2;
+namespace community_board_2;
 
 internal record Contract(string Id, string Type, string Target, int Quantity, int RewardGold, int DeadlineDays, string Giver);
 
@@ -1073,25 +1034,24 @@ internal static class Generator
         new[] { "Pierre", "Robin", "Marnie", "Caroline", "Sebastian" }[r.Next(5)];
 }
 ''')
-write("CommunityBoard2/data/pools.json", json.dumps({
+write("community_board_2/data/pools.json", json.dumps({
     "fetch_items": ["leek", "daffodil", "hazelnut", "clay", "copper_ore", "quartz"],
     "givers": ["Mayor Lewis", "Clint", "Demetrius", "Wizard"],
     "difficulty_curve": {"earlyGame": [1, 8], "midGame": [8, 16], "lateGame": [16, 30]},
 }, ensure_ascii=False, indent=2))
-write("CommunityBoard2/config.json", json.dumps({"MaxActiveContracts": 3, "RewardMultiplier": 1.0, "AllowDecline": True}, indent=2))
-write("CommunityBoard2/README.md", "# Community Board 2.0\n\n" + COMMON_README.format(mod="CommunityBoard2"))
-write("CommunityBoard2/bin/Release/net6.0/CommunityBoard2.dll", deterministic_dll("CommunityBoard2"))
+write("community_board_2/config.json", json.dumps({"MaxActiveContracts": 3, "RewardMultiplier": 1.0, "AllowDecline": True}, indent=2))
+write("community_board_2/README.md", "# Community Board 2.0\n\n" + COMMON_README.format(mod="community_board_2"))
 
-# ---------------- 13. FarmLayoutPresets ----------------
-write("FarmLayoutPresets/manifest.json", manifest("FarmLayoutPresets", "Farm Layout Presets", "1.0.0",
-    "Save the entire farm layout (buildings, objects, terrain) into named presets and restore instantly, even across seasons.", "FarmLayoutPresets.dll"))
-write("FarmLayoutPresets/FarmLayoutPresets.csproj", csproj("FarmLayoutPresets"))
-write("FarmLayoutPresets/ModEntry.cs", '''using System.Text.Json;
+# ---------------- 13. farm_layout_presets ----------------
+write("farm_layout_presets/manifest.json", manifest("farm_layout_presets", "Farm Layout Presets", "1.0.0",
+    "Save the entire farm layout (buildings, objects, terrain) into named presets and restore instantly, even across seasons.", "farm_layout_presets.dll"))
+write("farm_layout_presets/farm_layout_presets.csproj", csproj("farm_layout_presets"))
+write("farm_layout_presets/ModEntry.cs", '''using System.Text.Json;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 
-namespace FarmLayoutPresets;
+namespace farm_layout_presets;
 
 public class ModEntry : Mod
 {
@@ -1126,11 +1086,11 @@ public class ModEntry : Mod
     }
 }
 ''')
-write("FarmLayoutPresets/Snapshot.cs", '''using System.Text.Json;
+write("farm_layout_presets/Snapshot.cs", '''using System.Text.Json;
 using System.Text.Json.Serialization;
 using StardewValley;
 
-namespace FarmLayoutPresets;
+namespace farm_layout_presets;
 
 internal static class Snap
 {
@@ -1171,25 +1131,24 @@ internal record BuildingDto(string Type, int X, int Y, int ConstructionDaysLeft)
 internal record ObjectDto(string ItemId, int X, int Y);
 internal record TerrainDto(string Feature, int X, int Y);
 ''')
-write("FarmLayoutPresets/config.json", json.dumps({"HotkeyCapture": "F7", "HotkeyRestore": "F8", "MaxPresets": 20, "IncludeSoilState": False}, indent=2))
-write("FarmLayoutPresets/i18n/ru.json", json.dumps({
+write("farm_layout_presets/config.json", json.dumps({"HotkeyCapture": "F7", "HotkeyRestore": "F8", "MaxPresets": 20, "IncludeSoilState": False}, indent=2))
+write("farm_layout_presets/i18n/ru.json", json.dumps({
     "hud.saved": "Планировка сохранена в пресет.",
     "hud.loaded": "Планировка загружена из пресета.",
     "menu.title": "Пресеты планировки",
 }, ensure_ascii=False, indent=2))
-write("FarmLayoutPresets/README.md", "# Farm Layout Presets\n\n" + COMMON_README.format(mod="FarmLayoutPresets"))
-write("FarmLayoutPresets/bin/Release/net6.0/FarmLayoutPresets.dll", deterministic_dll("FarmLayoutPresets"))
+write("farm_layout_presets/README.md", "# Farm Layout Presets\n\n" + COMMON_README.format(mod="farm_layout_presets"))
 
-# ---------------- 14. InfiniteWaterHose ----------------
-write("InfiniteWaterHose/manifest.json", manifest("InfiniteWaterHose", "Infinite Water Hose", "1.0.0",
-    "A hose sold by Pierre for 250g: one end stays in any water source, the other waters crops endlessly — no refills, unlimited reach.", "InfiniteWaterHose.dll"))
-write("InfiniteWaterHose/InfiniteWaterHose.csproj", csproj("InfiniteWaterHose"))
-write("InfiniteWaterHose/ModEntry.cs", '''using StardewModdingAPI;
+# ---------------- 14. infinite_water_hose ----------------
+write("infinite_water_hose/manifest.json", manifest("infinite_water_hose", "Infinite Water Hose", "1.0.0",
+    "A hose sold by Pierre for 250g: one end stays in any water source, the other waters crops endlessly — no refills, unlimited reach.", "infinite_water_hose.dll"))
+write("infinite_water_hose/infinite_water_hose.csproj", csproj("infinite_water_hose"))
+write("infinite_water_hose/ModEntry.cs", '''using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Tools;
 
-namespace InfiniteWaterHose;
+namespace infinite_water_hose;
 
 public class ModEntry : Mod
 {
@@ -1247,28 +1206,27 @@ public class ModEntry : Mod
     private void OnTick(object? sender, UpdateTickedEventArgs e) { /* drag hose trail rendering */ }
 }
 ''')
-write("InfiniteWaterHose/i18n/ru.json", json.dumps({
+write("infinite_water_hose/i18n/ru.json", json.dumps({
     "tool.name": "Бесконечный шланг",
     "tool.desc": "Один конец — в воду, второй — в руках. Поливает урожай без ограничений по дальности и запасу воды.",
     "shop.pierre": "Вот, держи шланг. Один конец в воду — и поливай сколько влезет! Всего 250 золотых.",
     "anchor.msg": "Шланг опущен в воду!",
 }, ensure_ascii=False, indent=2))
-write("InfiniteWaterHose/config.json", json.dumps({"Price": 250, "Seller": "Pierre", "UnlimitedReach": True, "WorksInRain": False, "RequiresWaterSource": True}, indent=2))
-write("InfiniteWaterHose/assets/hose.png", png(16, 16, bytes([40, 120, 200, 255])))
-write("InfiniteWaterHose/README.md", "# Infinite Water Hose\n\nПродаётся у Пьера за 250 золотых.\n\n" + COMMON_README.format(mod="InfiniteWaterHose"))
-write("InfiniteWaterHose/bin/Release/net6.0/InfiniteWaterHose.dll", deterministic_dll("InfiniteWaterHose"))
+write("infinite_water_hose/config.json", json.dumps({"Price": 250, "Seller": "Pierre", "UnlimitedReach": True, "WorksInRain": False, "RequiresWaterSource": True}, indent=2))
+write("infinite_water_hose/assets/hose.png", png(16, 16, bytes([40, 120, 200, 255])))
+write("infinite_water_hose/README.md", "# Infinite Water Hose\n\nПродаётся у Пьера за 250 золотых.\n\n" + COMMON_README.format(mod="infinite_water_hose"))
 
-# ---------------- 15. InstantFishing ----------------
-write("InstantFishing/manifest.json", manifest("InstantFishing", "Instant Fishing", "1.0.0",
-    "Skips the fishing minigame entirely: cast the line and reel in the catch instantly, with perfect-quality rolls.", "InstantFishing.dll"))
-write("InstantFishing/InstantFishing.csproj", csproj("InstantFishing"))
-write("InstantFishing/ModEntry.cs", '''using HarmonyLib;
+# ---------------- 15. instant_fishing ----------------
+write("instant_fishing/manifest.json", manifest("instant_fishing", "Instant Fishing", "1.0.0",
+    "Skips the fishing minigame entirely: cast the line and reel in the catch instantly, with perfect-quality rolls.", "instant_fishing.dll"))
+write("instant_fishing/instant_fishing.csproj", csproj("instant_fishing"))
+write("instant_fishing/ModEntry.cs", '''using HarmonyLib;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Menus;
 
-namespace InstantFishing;
+namespace instant_fishing;
 
 public class ModEntry : Mod
 {
@@ -1298,12 +1256,53 @@ internal class Config
     public bool ShowCatchToast { get; set; } = true;
 }
 ''')
-write("InstantFishing/config.json", json.dumps({"Enabled": True, "AlwaysPerfect": False, "ShowCatchToast": True, "TreasureRollBonus": 0.0}, indent=2))
-write("InstantFishing/i18n/ru.json", json.dumps({
+write("instant_fishing/config.json", json.dumps({"Enabled": True, "AlwaysPerfect": False, "ShowCatchToast": True, "TreasureRollBonus": 0.0}, indent=2))
+write("instant_fishing/i18n/ru.json", json.dumps({
     "toast.caught": "Мгновенная поимка: {0}!",
     "settings.enabled": "Отменить мини-игру рыбалки",
 }, ensure_ascii=False, indent=2))
-write("InstantFishing/README.md", "# Instant Fishing\n\n" + COMMON_README.format(mod="InstantFishing"))
-write("InstantFishing/bin/Release/net6.0/InstantFishing.dll", deterministic_dll("InstantFishing"))
+write("instant_fishing/README.md", "# Instant Fishing\n\n" + COMMON_README.format(mod="instant_fishing"))
 
-print("Mods generated:", ", ".join(sorted(MODS.keys())) if MODS else "")
+# ---------------- solution file + overview README ----------------
+def sln_entry(idx, name, folder):
+    # deterministic pseudo-GUID per project (cosmetic but stable)
+    g = "{%08X-1111-2222-3333-%012X}" % (idx * 7919 + 0x53445700, idx * 104729)
+    return f'Project("{{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}}") = "{name}", "{folder}\\{name}.csproj", "{g}"\nEndProject\n'
+
+titles = {
+    "auto_sell_chest": "Auto-Sell Chest",
+    "stamina_regen_aura": "Stamina Regen Aura",
+    "weather_forecast_ui": "Weather Forecast UI",
+    "quick_teleport_stones": "Quick Teleport Stones",
+    "smart_sprinkler_ai": "Smart Sprinkler AI",
+    "pet_affection_overhaul": "Pet Affection Overhaul",
+    "crop_rotation_bonus": "Crop Rotation Bonus",
+    "black_market": "Black Market",
+    "skill_specializations": "Skill Specializations",
+    "seasonal_monster_invasion": "Seasonal Monster Invasion",
+    "cooking_recipe_evolution": "Cooking Recipe Evolution",
+    "community_board_2": "Community Board 2.0",
+    "farm_layout_presets": "Farm Layout Presets",
+    "infinite_water_hose": "Infinite Water Hose",
+    "instant_fishing": "Instant Fishing",
+}
+order = list(titles.keys())
+sln = ["Microsoft Visual Studio Solution File, Format Version 12.00",
+       "# Visual Studio Version 17",
+       "VisualStudioVersion = 17.0.31903.59",
+       "MinimumVisualStudioVersion = 10.0.40219.1"]
+for i, m in enumerate(order, 1):
+    sln.append(sln_entry(i, m, f"mods/{m}"))
+sln.append("Global")
+sln.append("\tGlobalSection(SolutionConfigurationPlatforms) = preSolution")
+sln.append("\t\tDebug|Any CPU = Debug|Any CPU")
+sln.append("\t\tRelease|Any CPU = Release|Any CPU")
+sln.append("\tEndGlobalSection")
+sln.append("EndGlobal")
+write("../Mods.sln", "\n".join(sln) + "\n")
+
+OVERVIEW = open(os.path.join(ROOT, "README.md"), encoding="utf-8").read() if os.path.exists(os.path.join(ROOT, "README.md")) else ""
+if OVERVIEW:
+    write("README.md", OVERVIEW)
+
+print("Mods generated:", ", ".join(sorted(MODS.keys())))

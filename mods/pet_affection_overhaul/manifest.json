@@ -1,0 +1,12 @@
+{
+  "Name": "Pet Affection Overhaul",
+  "Author": "FarmModStudio",
+  "Version": "1.0.0",
+  "Description": "Pets grant unique buffs (cat scares crows, dog finds truffles more often) and level up through a friendship system.",
+  "UniqueID": "FarmModStudio.pet_affection_overhaul",
+  "EntryDll": "pet_affection_overhaul.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": [
+    "Nexus:000000"
+  ]
+}
