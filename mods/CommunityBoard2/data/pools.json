@@ -1,0 +1,30 @@
+{
+  "fetch_items": [
+    "leek",
+    "daffodil",
+    "hazelnut",
+    "clay",
+    "copper_ore",
+    "quartz"
+  ],
+  "givers": [
+    "Mayor Lewis",
+    "Clint",
+    "Demetrius",
+    "Wizard"
+  ],
+  "difficulty_curve": {
+    "earlyGame": [
+      1,
+      8
+    ],
+    "midGame": [
+      8,
+      16
+    ],
+    "lateGame": [
+      16,
+      30
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "Name": "Instant Fishing",
+  "Author": "FarmModStudio",
+  "Version": "1.0.0",
+  "Description": "Skips the fishing minigame entirely: cast the line and reel in the catch instantly, with perfect-quality rolls.",
+  "UniqueID": "FarmModStudio.InstantFishing",
+  "EntryDll": "InstantFishing.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": [
+    "Nexus:000000"
+  ]
+}

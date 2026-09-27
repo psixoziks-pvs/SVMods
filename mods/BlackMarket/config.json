@@ -1,0 +1,6 @@
+{
+  "SpawnTime": 2000,
+  "SpawnChance": 0.6,
+  "ShopDataPath": "data/shop.json",
+  "DespawnTime": 2400
+}

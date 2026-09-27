@@ -1,0 +1,18 @@
+{
+  "sun": {
+    "sprite": "assets/weather_sun.png",
+    "label": "Солнечно"
+  },
+  "rain": {
+    "sprite": "assets/weather_rain.png",
+    "label": "Дождь"
+  },
+  "storm": {
+    "sprite": "assets/weather_storm.png",
+    "label": "Гроза"
+  },
+  "snow": {
+    "sprite": "assets/weather_snow.png",
+    "label": "Снег"
+  }
+}

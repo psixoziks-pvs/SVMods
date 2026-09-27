@@ -1,0 +1,35 @@
+{
+  "ShopId": "mods.blackmarket",
+  "BuyOnly": true,
+  "Currency": "mixed",
+  "Items": [
+    {
+      "ItemId": "(O)ancientseed",
+      "Price": 5000,
+      "Requires": {
+        "BatWing": 10
+      }
+    },
+    {
+      "ItemId": "(O)dinosauregg",
+      "Price": 8000,
+      "Requires": {
+        "AncientArtifact": 1
+      }
+    },
+    {
+      "ItemId": "Enchantment_RainbowShell",
+      "Price": 12000,
+      "Requires": {
+        "PrismaticShard": 2
+      }
+    },
+    {
+      "ItemId": "(O)voidmelon",
+      "Price": 3000,
+      "Requires": {
+        "VoidEssence": 5
+      }
+    }
+  ]
+}

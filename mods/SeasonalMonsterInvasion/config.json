@@ -1,0 +1,6 @@
+{
+  "NightStart": 2200,
+  "WavesPerYear": 5,
+  "DamageToCrops": false,
+  "CoopMode": true
+}

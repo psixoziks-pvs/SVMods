@@ -1,0 +1,12 @@
+{
+  "Name": "Seasonal Monster Invasion",
+  "Author": "FarmModStudio",
+  "Version": "1.0.0",
+  "Description": "Wave-defense minigame: monsters attack the farm on select nights each season. Defend, earn tokens, spend them at the armory shop.",
+  "UniqueID": "FarmModStudio.SeasonalMonsterInvasion",
+  "EntryDll": "SeasonalMonsterInvasion.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": [
+    "Nexus:000000"
+  ]
+}

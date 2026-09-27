@@ -1,0 +1,14 @@
+{
+  "tower_basics": {
+    "cost": 50,
+    "item": "(O)mod_inv_turret"
+  },
+  "reinforced_gate": {
+    "cost": 120,
+    "item": "(O)mod_inv_gate"
+  },
+  "token_banner": {
+    "cost": 300,
+    "item": "(O)mod_inv_banner"
+  }
+}

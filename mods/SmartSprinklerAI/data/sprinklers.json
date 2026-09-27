@@ -1,0 +1,20 @@
+{
+  "smart.basic": {
+    "Name": "Умный спринклер",
+    "Radius": 1,
+    "UpgradeFrom": "basic",
+    "Cost": 2500
+  },
+  "smart.quality": {
+    "Name": "Умный спринклер качества",
+    "Radius": 2,
+    "UpgradeFrom": "quality",
+    "Cost": 9000
+  },
+  "smart.iridium": {
+    "Name": "Иридиевый умный спринклер",
+    "Radius": 3,
+    "UpgradeFrom": "iridium",
+    "Cost": 25000
+  }
+}

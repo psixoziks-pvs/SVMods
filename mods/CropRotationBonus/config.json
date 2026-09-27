@@ -1,0 +1,5 @@
+{
+  "RepeatPenalty": 0.8,
+  "RotationBonusPerStep": 0.15,
+  "ShowSoilIndicator": true
+}

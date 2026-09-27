@@ -1,0 +1,12 @@
+{
+  "Name": "Quick Teleport Stones",
+  "Author": "FarmModStudio",
+  "Version": "1.0.0",
+  "Description": "Craftable teleport stones bound to any map location you have discovered. Right-click to warp instantly.",
+  "UniqueID": "FarmModStudio.QuickTeleportStones",
+  "EntryDll": "QuickTeleportStones.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": [
+    "Nexus:000000"
+  ]
+}

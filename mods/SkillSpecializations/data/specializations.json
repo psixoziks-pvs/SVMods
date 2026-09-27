@@ -1,0 +1,72 @@
+{
+  "Fishing": {
+    "5": [
+      {
+        "id": "DeepSea",
+        "name": "Глубоководный",
+        "perks": [
+          "+1 treasure roll"
+        ]
+      },
+      {
+        "id": "Tidepool",
+        "name": "Ловля у берега",
+        "perks": [
+          "crab pots never empty"
+        ]
+      }
+    ],
+    "10": [
+      {
+        "id": "Netmaker",
+        "name": "Сетевик",
+        "perks": [
+          "passive fish income"
+        ]
+      },
+      {
+        "id": "Luremaster",
+        "name": "Мастер приманок",
+        "perks": [
+          "double bait effect"
+        ]
+      }
+    ]
+  },
+  "Farming": {
+    "5": [
+      {
+        "id": "Shepherd",
+        "name": "Пастух",
+        "perks": [
+          "animal produce +1 quality"
+        ]
+      },
+      {
+        "id": "Bocage",
+        "name": "Земледелец",
+        "perks": [
+          "sprinklers upgrade free"
+        ]
+      }
+    ]
+  },
+  "Mining": {
+    "5": [
+      {
+        "id": "Gemologist",
+        "name": "Геммолог",
+        "perks": [
+          "+25% gem chance"
+        ]
+      },
+      {
+        "id": "Blacksmith",
+        "name": "Кузнец",
+        "perks": [
+          "ore nodes drop +1"
+        ]
+      }
+    ]
+  }
+}
