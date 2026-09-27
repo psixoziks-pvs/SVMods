@@ -1,0 +1,12 @@
+{
+  "Name": "Farm Layout Presets",
+  "Author": "FarmModStudio",
+  "Version": "1.0.0",
+  "Description": "Save the entire farm layout (buildings, objects, terrain) into named presets and restore instantly, even across seasons.",
+  "UniqueID": "FarmModStudio.farm_layout_presets",
+  "EntryDll": "farm_layout_presets.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": [
+    "Nexus:000000"
+  ]
+}

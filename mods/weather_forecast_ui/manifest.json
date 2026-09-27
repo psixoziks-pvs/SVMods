@@ -1,0 +1,12 @@
+{
+  "Name": "Weather Forecast UI",
+  "Author": "FarmModStudio",
+  "Version": "1.0.0",
+  "Description": "Adds a 7-day weather forecast widget next to the shipping-bin calendar, including rain/festival markers.",
+  "UniqueID": "FarmModStudio.weather_forecast_ui",
+  "EntryDll": "weather_forecast_ui.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": [
+    "Nexus:000000"
+  ]
+}

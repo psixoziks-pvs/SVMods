@@ -1,0 +1,27 @@
+{
+  "Fried Egg": {
+    "tiers": [
+      "Perfectly Fried Egg",
+      "Sunny-Side Masterpiece",
+      "Golden Omelette Royale"
+    ]
+  },
+  "Cheese Cauliflower": {
+    "tiers": [
+      "Gratin Cauliflower",
+      "Aged Cheese Cauliflower"
+    ]
+  },
+  "Pumpkin Soup": {
+    "tiers": [
+      "Spiced Pumpkin Soup",
+      "Pumpkin Bisque Royale"
+    ]
+  },
+  "Fish Tacos": {
+    "tiers": [
+      "Baja Fish Tacos",
+      "Legendary Fish Taco Feast"
+    ]
+  }
+}

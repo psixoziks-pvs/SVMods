@@ -1,0 +1,33 @@
+{
+  "Cat": {
+    "buff": "crow_repel",
+    "tiers": [
+      8,
+      16,
+      24,
+      32,
+      40
+    ],
+    "descriptionKey": "buff.cat"
+  },
+  "Dog": {
+    "buff": "truffle_luck",
+    "tiers": [
+      8,
+      16,
+      24,
+      32,
+      40
+    ],
+    "descriptionKey": "buff.dog"
+  },
+  "Chicken": {
+    "buff": "egg_bonus",
+    "tiers": [
+      10,
+      20,
+      30
+    ],
+    "descriptionKey": "buff.chicken"
+  }
+}

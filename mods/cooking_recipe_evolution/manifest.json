@@ -1,0 +1,12 @@
+{
+  "Name": "Cooking Recipe Evolution",
+  "Author": "FarmModStudio",
+  "Version": "1.0.0",
+  "Description": "Recipes level up with use: repeated cooking unlocks upgraded variants with stronger buffs and fancier names.",
+  "UniqueID": "FarmModStudio.cooking_recipe_evolution",
+  "EntryDll": "cooking_recipe_evolution.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": [
+    "Nexus:000000"
+  ]
+}

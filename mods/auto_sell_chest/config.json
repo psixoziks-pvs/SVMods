@@ -1,0 +1,8 @@
+{
+  "SellPriceBonusPercent": 5,
+  "DeniedItems": [
+    "Wood",
+    "Stone"
+  ],
+  "MaxSellPerDay": 9999
+}

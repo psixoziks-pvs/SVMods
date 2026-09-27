@@ -1,0 +1,6 @@
+{
+  "object.name": "Quick Teleport Stone",
+  "object.desc": "Bind it to any discovered location and warp instantly.",
+  "crafting.name": "Teleport Stone",
+  "msg.bound": "Stone bound to {0}!"
+}

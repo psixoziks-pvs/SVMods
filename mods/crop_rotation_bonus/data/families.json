@@ -1,0 +1,25 @@
+{
+  "brassica": [
+    "kale",
+    "cauliflower"
+  ],
+  "legume": [
+    "beanpole",
+    "soybean",
+    "peanut"
+  ],
+  "nightshade": [
+    "tomato",
+    "eggplant",
+    "pepper"
+  ],
+  "grain": [
+    "wheat",
+    "rice"
+  ],
+  "allium": [
+    "garlic",
+    "onion",
+    "leek"
+  ]
+}

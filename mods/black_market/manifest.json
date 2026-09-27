@@ -1,0 +1,12 @@
+{
+  "Name": "Black Market",
+  "Author": "FarmModStudio",
+  "Version": "1.0.0",
+  "Description": "A mysterious night merchant appears on rainy nights after 8 PM selling rare seeds, artifacts and enchantments in exchange for specific resources.",
+  "UniqueID": "FarmModStudio.black_market",
+  "EntryDll": "black_market.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": [
+    "Nexus:000000"
+  ]
+}
